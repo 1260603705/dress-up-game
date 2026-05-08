@@ -1,7 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Prisma schema — 2D 换装游戏
+// 使用 Prisma 7 语法 (generator provider = "prisma-client")
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +8,172 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ── 枚举 ──────────────────────────────────────────────
+
+enum GarmentCategory {
+  TOP       @map("top")
+  BOTTOM    @map("bottom")
+  DRESS     @map("dress")
+  SHOES     @map("shoes")
+  SOCKS     @map("socks")
+  ACCESSORY @map("accessory")
+  HAIR      @map("hair")
+
+  @@map("garment_category")
+}
+
+// ── 模型 ──────────────────────────────────────────────
+
+/// 用户表
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  characters   Character[]
+  wardrobeItems WardrobeItem[]
+  inventory    UserInventory[]
+  savedOutfits SavedOutfit[]
+  posts        Post[]
+  comments     Comment[]
+  likes        Like[]
+
+  @@map("users")
+}
+
+/// 角色表（角色定制数据）
+model Character {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  name         String
+  gender       String
+  customParams Json     @map("custom_params")
+  wearing      Json     @default("[]")
+  isDefault    Boolean  @default(false) @map("is_default")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  savedOutfits SavedOutfit[]
+
+  @@map("characters")
+}
+
+/// 服装物品表（系统预设 + 用户上传）
+model WardrobeItem {
+  id           Int              @id @default(autoincrement())
+  ownerId      Int?             @map("owner_id")
+  name         String
+  category     GarmentCategory
+  layer        Int
+  thumbnailUrl String           @map("thumbnail_url")
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  owner     User?           @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  parts     ItemPart[]
+  inventory UserInventory[]
+
+  @@map("wardrobe_items")
+}
+
+/// 服装部件表（每个服装物品由多个部件组成）
+model ItemPart {
+  id          Int     @id @default(autoincrement())
+  itemId      Int     @map("item_id")
+  partType    String  @map("part_type")
+  templateId  String  @map("template_id")
+  textureUrl  String? @map("texture_url")
+  boneAnchor  String  @map("bone_anchor")
+  offsetX     Float   @default(0)    @map("offset_x")
+  offsetY     Float   @default(0)    @map("offset_y")
+  scaleX      Float   @default(1.0)  @map("scale_x")
+  scaleY      Float   @default(1.0)  @map("scale_y")
+  rotation    Float   @default(0)
+  colorHex    String? @map("color_hex")
+  zOrder      Int     @default(0)    @map("z_order")
+  metadata    Json    @default("{}")
+
+  item WardrobeItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@map("item_parts")
+}
+
+/// 玩家仓库（用户拥有的物品）
+model UserInventory {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  itemId     Int      @map("item_id")
+  obtainedAt DateTime @default(now()) @map("obtained_at")
+
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item WardrobeItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+  @@map("user_inventory")
+}
+
+/// 保存的搭配方案
+model SavedOutfit {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  characterId  Int      @map("character_id")
+  name         String
+  outfitData   Json     @map("outfit_data")
+  thumbnailUrl String?  @map("thumbnail_url")
+  isShared     Boolean  @default(false) @map("is_shared")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@map("saved_outfits")
+}
+
+/// 论坛帖子
+model Post {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  title     String
+  content   String?
+  imageUrl  String?  @map("image_url")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments Comment[]
+  likes    Like[]
+
+  @@map("posts")
+}
+
+/// 评论
+model Comment {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  userId    Int      @map("user_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+/// 点赞（每人每贴只能点一次）
+model Like {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("likes")
 }
