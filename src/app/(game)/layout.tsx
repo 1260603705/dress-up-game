@@ -1,11 +1,12 @@
 // src/app/(game)/layout.tsx — 游戏区域布局（需登录）
 'use client';
-import { useSession } from 'next-auth/react';
+import { SessionProvider, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import AppShell from '@/components/layout/AppShell';
+import Navbar from '@/components/layout/Navbar';
+import Sidebar from '@/components/layout/Sidebar';
 
-export default function GameLayout({ children }: { children: React.ReactNode }) {
+function AuthGuard({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
   const router = useRouter();
 
@@ -25,5 +26,21 @@ export default function GameLayout({ children }: { children: React.ReactNode }) 
 
   if (status === 'unauthenticated') return null;
 
-  return <AppShell>{children}</AppShell>;
+  return (
+    <>
+      <Navbar />
+      <div className="flex">
+        <Sidebar />
+        <main className="flex-1 p-6 bg-gray-50 min-h-[calc(100vh-56px)]">{children}</main>
+      </div>
+    </>
+  );
+}
+
+export default function GameLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider>
+      <AuthGuard>{children}</AuthGuard>
+    </SessionProvider>
+  );
 }
