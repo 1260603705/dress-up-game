@@ -43,7 +43,7 @@ const CharacterCanvas = forwardRef<CharacterCanvasHandle>(function CharacterCanv
     return () => { app.destroy(true); };
   }, []);
 
-  // 参数或穿戴变化 → 重新绘制
+  // 参数或穿戴变化 → 重新绘制骨骼点
   useEffect(() => {
     const app = appRef.current;
     if (!app) return;
@@ -51,7 +51,7 @@ const CharacterCanvas = forwardRef<CharacterCanvasHandle>(function CharacterCanv
 
     const skeleton = computeSkeleton(params);
 
-    // 绘制骨骼调试点（红色圆点）
+    // 绘制骨骼调试点
     const g = new PIXI.Graphics();
     for (const pos of Object.values(skeleton)) {
       g.beginFill(0xff0000, 0.6);
@@ -61,44 +61,51 @@ const CharacterCanvas = forwardRef<CharacterCanvasHandle>(function CharacterCanv
     app.stage.addChild(g);
 
     // 加载每件穿戴物品的部件纹理并渲染
-    wearing.forEach(async (entry) => {
-      try {
-        const res = await fetch(`/api/wardrobe/${entry.item_id}`);
-        if (!res.ok) return;
-        const item = await res.json();
-        if (!item.parts) return;
+    let cancelled = false;
+    (async () => {
+      for (const entry of wearing) {
+        if (cancelled) return;
+        try {
+          const res = await fetch(`/api/wardrobe/${entry.item_id}`);
+          if (!res.ok) continue;
+          const item = await res.json();
+          if (!item.parts) continue;
 
-        const container = new PIXI.Container();
-        const sorted = [...item.parts].sort((a: any, b: any) => (a.zOrder || 0) - (b.zOrder || 0));
+          const container = new PIXI.Container();
+          const sorted = [...item.parts].sort((a: any, b: any) => (a.zOrder || 0) - (b.zOrder || 0));
 
-        for (const part of sorted) {
-          const bone = skeleton[part.boneAnchor];
-          if (!bone) continue;
+          for (const part of sorted) {
+            if (cancelled) return;
+            const bone = skeleton[part.boneAnchor];
+            if (!bone) continue;
 
-          const dir = part.partType === 'base_shape' ? 'base_shapes'
-            : `${part.partType}s`;
-          const textureUrl = `/assets/system/${dir}/${part.templateId}.png`;
+            const dir = part.partType === 'base_shape' ? 'base_shapes'
+              : `${part.partType}s`;
+            const textureUrl = `/assets/system/${dir}/${part.templateId}.png`;
 
-          try {
-            const texture = await PIXI.Assets.load(textureUrl);
-            const sprite = new PIXI.Sprite(texture);
-            sprite.position.set(bone.x + (part.offsetX || 0), bone.y + (part.offsetY || 0));
-            sprite.scale.set(part.scaleX || 1, part.scaleY || 1);
-            sprite.angle = part.rotation || 0;
+            try {
+              const texture = await PIXI.Assets.load(textureUrl);
+              const sprite = new PIXI.Sprite(texture);
+              sprite.position.set(bone.x + (part.offsetX || 0), bone.y + (part.offsetY || 0));
+              sprite.scale.set(part.scaleX || 1, part.scaleY || 1);
+              sprite.angle = part.rotation || 0;
 
-            const colorHex = entry.color_overrides?.[part.partType] || part.colorHex;
-            if (colorHex) sprite.tint = parseInt(colorHex.replace('#', ''), 16);
+              const colorHex = entry.color_overrides?.[part.partType] || part.colorHex;
+              if (colorHex) sprite.tint = parseInt(colorHex.replace('#', ''), 16);
 
-            container.addChild(sprite);
-          } catch {
-            // 纹理加载失败跳过该部件
+              container.addChild(sprite);
+            } catch {
+              // 纹理加载失败跳过
+            }
           }
+          if (!cancelled) app.stage.addChild(container);
+        } catch {
+          // 物品加载失败跳过
         }
-        app.stage.addChild(container);
-      } catch {
-        // 物品加载失败跳过
       }
-    });
+    })();
+
+    return () => { cancelled = true; };
   }, [params, wearing]);
 
   return (

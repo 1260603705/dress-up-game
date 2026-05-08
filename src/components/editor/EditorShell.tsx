@@ -3,6 +3,7 @@
 'use client';
 import PartLibrary from './PartLibrary';
 import PropertyPanel from './PropertyPanel';
+import EditorCanvas from './EditorCanvas';
 import { useDesignStore } from '@/stores/designStore';
 import { useRouter } from 'next/navigation';
 import { GARMENT_CATEGORIES, CATEGORY_LABELS } from '@/lib/constants';
@@ -26,7 +27,7 @@ export default function EditorShell() {
     });
     if (!res.ok) { alert('保存失败'); return; }
     clearDesign();
-    router.push('/wardrobe');  // 保存成功 → 跳转到仓库
+    router.push('/wardrobe');
   };
 
   return (
@@ -47,8 +48,8 @@ export default function EditorShell() {
       {/* 三栏编辑区 */}
       <div className="flex flex-1 overflow-hidden">
         <PartLibrary />
-        <div className="flex-1 bg-gray-100 flex items-center justify-center">
-          <p className="text-gray-400 text-sm">实时预览（接入编辑器Canvas后显示）</p>
+        <div className="flex-1 bg-gray-100 flex items-center justify-center p-4">
+          <EditorCanvas />
         </div>
         <PropertyPanel />
       </div>
