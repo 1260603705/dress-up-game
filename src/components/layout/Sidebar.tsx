@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 const links = [
   { href: '/home', label: '我的角色' },
   { href: '/wardrobe', label: '仓库' },
+  { href: '/outfits', label: '搭配方案' },
   { href: '/editor', label: '服装创作' },
   { href: '/forum', label: '社区' },
 ];

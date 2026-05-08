@@ -1,7 +1,9 @@
 // src/components/character/CharacterForm.tsx
 // 捏人参数编辑表单 - 用按钮组代替下拉框，方便预览切换
 'use client';
+import { useState } from 'react';
 import { useCharacterStore, DEFAULT_PRESETS } from '@/stores/characterStore';
+import { useRouter } from 'next/navigation';
 
 // 每个参数的可选值 + 中文标签
 const OPTIONS: Record<string, { label: string; value: string }[]> = {
@@ -15,10 +17,59 @@ const OPTIONS: Record<string, { label: string; value: string }[]> = {
 };
 
 export default function CharacterForm() {
-  const { params, setParams, resetParams } = useCharacterStore();
+  const { params, setParams, resetParams, characterId, setCharacterId } = useCharacterStore();
+  const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const router = useRouter();
+
+  async function handleSave() {
+    if (!name.trim()) { alert('请输入角色名称'); return; }
+    setSaving(true);
+    try {
+      const url = characterId ? `/api/avatar/${characterId}` : '/api/avatar';
+      const method = characterId ? 'PATCH' : 'POST';
+      const body = characterId
+        ? { name: name.trim(), custom_params: params }
+        : { name: name.trim(), gender: params.gender, custom_params: params };
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (!characterId) setCharacterId(data.id);
+        alert('角色已保存');
+      } else {
+        const err = await res.json();
+        alert(err.error || '保存失败');
+      }
+    } catch {
+      alert('网络错误');
+    }
+    setSaving(false);
+  }
+
+  function handleSaveAndBack() {
+    handleSave().then(() => router.push('/home'));
+  }
 
   return (
     <div className="space-y-6 bg-white p-6 rounded-lg shadow-sm">
+      {/* 角色名称输入 */}
+      <section>
+        <h3 className="font-semibold mb-2">角色名称</h3>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="给你的角色取个名字..."
+          className="w-full border rounded px-3 py-2 text-sm"
+          maxLength={30}
+        />
+      </section>
+
       {/* 预设选择 */}
       <section>
         <h3 className="font-semibold mb-2">预设</h3>
@@ -61,7 +112,17 @@ export default function CharacterForm() {
         </section>
       ))}
 
-      <button onClick={resetParams} className="px-4 py-2 border rounded text-sm text-gray-500">恢复默认</button>
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving}
+          className="flex-1 py-2 bg-purple-600 text-white rounded text-sm font-medium disabled:opacity-50">
+          {saving ? '保存中...' : characterId ? '更新角色' : '创建角色'}
+        </button>
+        <button onClick={handleSaveAndBack} disabled={saving}
+          className="px-4 py-2 border border-purple-300 text-purple-600 rounded text-sm disabled:opacity-50">
+          保存并返回
+        </button>
+        <button onClick={resetParams} className="px-4 py-2 border rounded text-sm text-gray-500">恢复默认</button>
+      </div>
     </div>
   );
 }
