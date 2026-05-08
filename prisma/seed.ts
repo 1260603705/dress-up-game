@@ -1,6 +1,15 @@
 // prisma/seed.ts - 初始化系统预设服装物品（注册后所有玩家可见）
 import { PrismaClient } from '../src/generated/prisma/client.js';
-const prisma = new PrismaClient({} as any);
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const prisma = new PrismaClient({
+  adapter: new PrismaPg(pool),
+});
 
 async function main() {
   // 7件基础系统预设服装
