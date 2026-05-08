@@ -16,7 +16,7 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: '未登录' }, { status: 401 });
 
-  const userId = parseInt((session.user as any).id, 10);
+  const userId = (session.user as any).id;
   const characters = await prisma.character.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },              // 最新角色排前面
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: '未登录' }, { status: 401 });
 
-  const userId = parseInt((session.user as any).id, 10);
+  const userId = (session.user as any).id;
   const body = await req.json();
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });

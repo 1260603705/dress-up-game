@@ -10,170 +10,150 @@ datasource db {
   provider = "postgresql"
 }
 
-// ── 枚举 ──────────────────────────────────────────────
-
-enum GarmentCategory {
-  TOP       @map("top")
-  BOTTOM    @map("bottom")
-  DRESS     @map("dress")
-  SHOES     @map("shoes")
-  SOCKS     @map("socks")
-  ACCESSORY @map("accessory")
-  HAIR      @map("hair")
-
-  @@map("garment_category")
-}
-
-// ── 模型 ──────────────────────────────────────────────
-
-/// 用户表
+// ── 用户表 ──────────────────────────────────────────────
 model User {
-  id           Int      @id @default(autoincrement())
-  username     String   @unique
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id            String    @id @default(uuid())            // UUID 主键
+  username      String    @unique                         // 用户名，唯一
+  email         String    @unique                         // 邮箱，唯一
+  passwordHash  String    @map("password_hash")           // bcrypt 哈希密码
+  createdAt     DateTime  @default(now()) @map("created_at")
 
-  characters   Character[]
-  wardrobeItems WardrobeItem[]
-  inventory    UserInventory[]
-  savedOutfits SavedOutfit[]
-  posts        Post[]
-  comments     Comment[]
-  likes        Like[]
-
+  characters    Character[]
+  wardrobeItems WardrobeItem[]                            // 用户自制的服装
+  inventory     UserInventory[]                           // 用户仓库的物品
+  savedOutfits  SavedOutfit[]
+  posts         Post[]
+  comments      Comment[]
+  likes         Like[]
   @@map("users")
 }
 
-/// 角色表（角色定制数据）
+// ── 角色表 ──────────────────────────────────────────────
+// 每个用户可创建多个角色
 model Character {
-  id           Int      @id @default(autoincrement())
-  userId       Int      @map("user_id")
-  name         String
-  gender       String
-  customParams Json     @map("custom_params")
-  wearing      Json     @default("[]")
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  name         String                                     // 角色名称
+  gender       String                                     // 性别: male / female
+  customParams Json     @map("custom_params")             // 捏人参数（height/shape/face/eyes...）
+  wearing      Json     @default("[]") @map("wearing")    // 当前穿戴 [{item_id, color_overrides}]
   isDefault    Boolean  @default(false) @map("is_default")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   savedOutfits SavedOutfit[]
-
   @@map("characters")
 }
 
-/// 服装物品表（系统预设 + 用户上传）
+// ── 服装物品表 ──────────────────────────────────────────
+// 系统预设(ownerId=null) + 玩家自制
 model WardrobeItem {
-  id           Int              @id @default(autoincrement())
-  ownerId      Int?             @map("owner_id")
-  name         String
-  category     GarmentCategory
-  layer        Int
-  thumbnailUrl String           @map("thumbnail_url")
-  createdAt    DateTime         @default(now()) @map("created_at")
+  id              String         @id @default(uuid())
+  ownerId         String?        @map("owner_id")         // null=系统预设, 非null=玩家自制
+  name            String                                   // 衣服名称
+  category        String                                   // top/bottom/dress/shoes/socks/accessory/hair
+  layer           Int                                      // 渲染层级 0-8
+  thumbnailUrl    String?        @map("thumbnail_url")
+  createdAt       DateTime       @default(now()) @map("created_at")
 
-  owner     User?           @relation(fields: [ownerId], references: [id], onDelete: SetNull)
-  parts     ItemPart[]
-  inventory UserInventory[]
-
+  owner           User?          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  parts           ItemPart[]                               // 组成此衣服的部件列表
+  userInventories UserInventory[]
   @@map("wardrobe_items")
 }
 
-/// 服装部件表（每个服装物品由多个部件组成）
+// ── 服装部件表 ──────────────────────────────────────────
+// 一件衣服 = 基布 + 覆层部件 × N + 装饰 × N
 model ItemPart {
-  id          Int     @id @default(autoincrement())
-  itemId      Int     @map("item_id")
-  partType    String  @map("part_type")
-  templateId  String  @map("template_id")
-  textureUrl  String? @map("texture_url")
-  boneAnchor  String  @map("bone_anchor")
-  offsetX     Float   @default(0)    @map("offset_x")
-  offsetY     Float   @default(0)    @map("offset_y")
-  scaleX      Float   @default(1.0)  @map("scale_x")
-  scaleY      Float   @default(1.0)  @map("scale_y")
-  rotation    Float   @default(0)
-  colorHex    String? @map("color_hex")
-  zOrder      Int     @default(0)    @map("z_order")
-  metadata    Json    @default("{}")
+  id          String       @id @default(uuid())
+  itemId      String       @map("item_id")
+  partType    String       @map("part_type")               // base_shape/collar/sleeve/hem/pattern/decoration/texture
+  templateId  String       @map("template_id")             // 引用的系统部件模板ID
+  textureUrl  String?      @map("texture_url")
+  boneAnchor  String       @map("bone_anchor")             // 挂载到哪个骨骼锚点
+  offsetX     Float        @default(0) @map("offset_x")
+  offsetY     Float        @default(0) @map("offset_y")
+  scaleX      Float        @default(1.0) @map("scale_x")
+  scaleY      Float        @default(1.0) @map("scale_y")
+  rotation    Float        @default(0)                     // 旋转角度
+  colorHex    String?      @map("color_hex")               // 默认颜色 #RRGGBB
+  zOrder      Int          @default(0) @map("z_order")     // 同层内绘制顺序
+  metadata    Json         @default("{}")
 
-  item WardrobeItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-
+  item        WardrobeItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   @@map("item_parts")
 }
 
-/// 玩家仓库（用户拥有的物品）
+// ── 玩家仓库 ────────────────────────────────────────────
+// 用户拥有哪些服装物品
 model UserInventory {
-  id         Int      @id @default(autoincrement())
-  userId     Int      @map("user_id")
-  itemId     Int      @map("item_id")
-  obtainedAt DateTime @default(now()) @map("obtained_at")
+  id         String       @id @default(uuid())
+  userId     String       @map("user_id")
+  itemId     String       @map("item_id")
+  obtainedAt DateTime     @default(now()) @map("obtained_at")
 
-  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  item WardrobeItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item       WardrobeItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   @@unique([userId, itemId])
   @@map("user_inventory")
 }
 
-/// 保存的搭配方案
+// ── 保存的搭配方案 ──────────────────────────────────────
 model SavedOutfit {
-  id           Int      @id @default(autoincrement())
-  userId       Int      @map("user_id")
-  characterId  Int      @map("character_id")
-  name         String
-  outfitData   Json     @map("outfit_data")
-  thumbnailUrl String?  @map("thumbnail_url")
-  isShared     Boolean  @default(false) @map("is_shared")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  characterId  String    @map("character_id")
+  name         String                                    // "夏日清凉套装"
+  outfitData   Json      @map("outfit_data")             // [{item_id, color_overrides}]
+  thumbnailUrl String?   @map("thumbnail_url")
+  isShared     Boolean   @default(false) @map("is_shared")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   @@map("saved_outfits")
 }
 
-/// 论坛帖子
+// ── 论坛帖子 ────────────────────────────────────────────
 model Post {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @map("user_id")
-  title     String
-  content   String?
-  imageUrl  String?  @map("image_url")
-  createdAt DateTime @default(now()) @map("created_at")
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  title     String                                    // 帖子标题
+  content   String?                                   // 正文（可选）
+  imageUrl  String?   @map("image_url")               // 贴图URL
+  createdAt DateTime  @default(now()) @map("created_at")
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  comments Comment[]
-  likes    Like[]
-
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments  Comment[]
+  likes     Like[]
   @@map("posts")
 }
 
-/// 评论
+// ── 评论 ────────────────────────────────────────────────
 model Comment {
-  id        Int      @id @default(autoincrement())
-  postId    Int      @map("post_id")
-  userId    Int      @map("user_id")
+  id        String   @id @default(uuid())
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
   content   String
   createdAt DateTime @default(now()) @map("created_at")
 
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@map("comments")
 }
 
-/// 点赞（每人每贴只能点一次）
+// ── 点赞 ────────────────────────────────────────────────
+// 同一用户对同一帖子只能有一条记录（幂等：再点取消）
 model Like {
-  id        Int      @id @default(autoincrement())
-  postId    Int      @map("post_id")
-  userId    Int      @map("user_id")
+  id        String   @id @default(uuid())
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([postId, userId])    // 同一用户对同一帖子只能有一条记录
   @@map("likes")
 }

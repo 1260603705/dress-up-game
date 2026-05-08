@@ -9,11 +9,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: '未登录' }, { status: 401 });
 
-  const userId = parseInt((session.user as any).id, 10);
-  const id = parseInt(params.id, 10);
-  if (isNaN(id)) return NextResponse.json({ error: '无效的 ID' }, { status: 400 });
-
-  const character = await prisma.character.findFirst({ where: { id, userId } });
+  const userId = (session.user as any).id;
+  const character = await prisma.character.findFirst({ where: { id: params.id, userId } });
   if (!character) return NextResponse.json({ error: '未找到' }, { status: 404 });
   return NextResponse.json(character);
 }
@@ -22,14 +19,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: '未登录' }, { status: 401 });
 
-  const userId = parseInt((session.user as any).id, 10);
-  const id = parseInt(params.id, 10);
-  if (isNaN(id)) return NextResponse.json({ error: '无效的 ID' }, { status: 400 });
-
+  const userId = (session.user as any).id;
   const body = await req.json();
 
   const result = await prisma.character.updateMany({
-    where: { id, userId },
+    where: { id: params.id, userId },
     data: {
       ...(body.name && { name: body.name }),
       ...(body.custom_params && { customParams: body.custom_params }),
@@ -44,10 +38,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: '未登录' }, { status: 401 });
 
-  const userId = parseInt((session.user as any).id, 10);
-  const id = parseInt(params.id, 10);
-  if (isNaN(id)) return NextResponse.json({ error: '无效的 ID' }, { status: 400 });
-
-  await prisma.character.deleteMany({ where: { id, userId } });
+  const userId = (session.user as any).id;
+  await prisma.character.deleteMany({ where: { id: params.id, userId } });
   return NextResponse.json({ success: true });
 }
