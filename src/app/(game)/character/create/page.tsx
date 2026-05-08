@@ -1,11 +1,18 @@
 // src/app/(game)/character/create/page.tsx — 创建/编辑角色页
 'use client';
 import { useState, useRef } from 'react';
-import CharacterCanvas, { CharacterCanvasHandle } from '@/components/character/CharacterCanvas';
+import dynamic from 'next/dynamic';
+import type { CharacterCanvasHandle } from '@/components/character/CharacterCanvas';
 import CharacterForm from '@/components/character/CharacterForm';
 import SaveOutfitForm from '@/components/outfit/SaveOutfitForm';
 import ShareOutfitForm from '@/components/forum/ShareOutfitForm';
 import { useCharacterStore } from '@/stores/characterStore';
+
+// PixiJS 依赖浏览器 Canvas API，必须禁用 SSR
+const CharacterCanvas = dynamic(
+  () => import('@/components/character/CharacterCanvas'),
+  { ssr: false },
+);
 
 export default function CreateCharacterPage() {
   const [showSaveForm, setShowSaveForm] = useState(false);
@@ -27,14 +34,13 @@ export default function CreateCharacterPage() {
     if (!dataUrl) return;
     setUploading(true);
     try {
-      // 上传快照到服务器
       const blob = await (await fetch(dataUrl)).blob();
       const form = new FormData();
       form.append('file', blob, 'outfit_share.png');
       const res = await fetch('/api/upload', { method: 'POST', body: form });
       if (res.ok) {
         const data = await res.json();
-        setSharedImageUrl(data.display); // 800px 展示图
+        setSharedImageUrl(data.display);
         setShowShareForm(true);
       } else {
         alert('图片上传失败');

@@ -3,7 +3,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { writeFile, mkdir } from 'fs/promises';
+import { mkdir } from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import sharp from 'sharp';
