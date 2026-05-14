@@ -99,5 +99,6 @@ body.game-layout {
     linear-gradient(var(--game-grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--game-grid-line) 1px, transparent 1px);
   background-size: var(--game-grid-size) var(--game-grid-size);
+  /* ~1/3 of grid cell height — minimal gap above container */
   padding-top: 7px;
 }
