@@ -13,6 +13,13 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    document.body.classList.add('game-layout');
+    return () => {
+      document.body.classList.remove('game-layout');
+    };
+  }, []);
+
+  useEffect(() => {
     if (status === 'unauthenticated') {
       router.replace('/login');
     }
@@ -21,7 +28,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-gray-400">加载中...</p>
+        <p className="text-gray-600">加载中...</p>
       </div>
     );
   }
@@ -29,13 +36,13 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   if (status === 'unauthenticated') return null;
 
   return (
-    <>
+    <div className="w-full max-w-[1200px] mx-auto min-h-screen" style={{ background: 'var(--game-container-bg)' }}>
       <Navbar />
       <div className="flex">
         <Sidebar />
-        <main className="flex-1 p-6 bg-gray-50 min-h-[calc(100vh-56px)]">{children}</main>
+        <main className="flex-1 p-6 min-h-[calc(100vh-56px)]">{children}</main>
       </div>
-    </>
+    </div>
   );
 }
 
