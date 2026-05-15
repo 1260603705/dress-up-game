@@ -17,7 +17,6 @@ export default function HomePage() {
   const [characters, setCharacters] = useState<CharItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [albumKey, setAlbumKey] = useState(0);
-  const [saving, setSaving] = useState(false);
   const selectedChar = characters.find((c) => c.id === selectedId) ?? null;
   const { setParams, setWearing, setCharacterId, wearing } = useCharacterStore();
 
@@ -57,7 +56,6 @@ export default function HomePage() {
     if (wearing.length === 0) { alert('请先从仓库穿戴衣服'); return; }
     const name = prompt('给这套搭配起个名字：');
     if (!name?.trim()) return;
-    setSaving(true);
     try {
       const res = await fetch('/api/outfits', {
         method: 'POST',
@@ -77,7 +75,6 @@ export default function HomePage() {
     } catch {
       alert('网络错误');
     }
-    setSaving(false);
   };
 
   return (
