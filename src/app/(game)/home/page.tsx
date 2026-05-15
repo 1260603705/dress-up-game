@@ -1,4 +1,4 @@
-// src/app/(game)/home/page.tsx — 首页（左预览 + 右：档案/相册/仓库/保存）
+// src/app/(game)/home/page.tsx — 首页（左45%预览 + 右55%面板）
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import CharacterPreview from '@/components/home/CharacterPreview';
@@ -81,9 +81,9 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex gap-6 h-full max-w-6xl mx-auto">
-      {/* 左栏：角色预览 */}
-      <div className="flex-1 min-w-0 flex flex-col gap-4">
+    <div className="flex gap-3 h-full max-w-6xl mx-auto">
+      {/* 左栏：角色预览 45% */}
+      <div className="min-w-0 flex flex-col gap-4" style={{ width: '45%' }}>
         <CharacterPreview
           characters={characters}
           selectedId={selectedId}
@@ -91,18 +91,37 @@ export default function HomePage() {
         />
       </div>
 
-      {/* 右栏：档案 + 记忆相册 + 仓库 + 保存 */}
-      <div className="w-[360px] flex-shrink-0 overflow-y-auto flex flex-col gap-4 max-h-[calc(100vh-56px-3rem)] pb-4">
-        <ProfileCard character={selectedChar} />
-
-        {/* 记忆相册 */}
-        <div className="bg-game-surface rounded-2xl p-5 shadow-md border-2 border-game-border">
+      {/* 右栏 55% */}
+      <div
+        className="min-w-0 overflow-y-auto flex flex-col gap-3 max-h-[calc(100vh-56px-3rem)] pb-4"
+        style={{ width: '55%' }}
+      >
+        {/* 1. 简介 + 记忆相册 并排一行 */}
+        <div
+          className="flex items-center gap-4 rounded-2xl p-4"
+          style={{
+            background: 'var(--game-surface)',
+            border: '2px solid var(--game-border)',
+          }}
+        >
+          <ProfileCard character={selectedChar} />
           <MemoryAlbum key={albumKey} characterId={selectedId} />
         </div>
 
-        {/* 我的仓库 */}
-        <div className="bg-game-surface rounded-2xl p-5 shadow-md border-2 border-game-border">
-          <h3 className="text-base font-bold mb-3 text-game-text-secondary">我的仓库</h3>
+        {/* 2. 我的仓库 */}
+        <div
+          className="rounded-2xl p-5"
+          style={{
+            background: 'var(--game-surface)',
+            border: '2px solid var(--game-border)',
+          }}
+        >
+          <h3
+            className="text-base font-bold mb-3"
+            style={{ color: 'var(--game-text-secondary)' }}
+          >
+            我的仓库
+          </h3>
           <WardrobeGrid characterId={selectedId} onSaveOutfit={handleSaveOutfit} />
         </div>
       </div>
