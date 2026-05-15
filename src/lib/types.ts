@@ -35,6 +35,7 @@ export type PartType =
 export interface WearingEntry {
   item_id: string;
   color_overrides: Record<string, string>;  // { "main_body": "#ff6b6b", "collar": "#fff" }
+  category?: GarmentCategory;               // 用于同类别替换
 }
 
 // ===== 骨骼相关 =====
@@ -63,7 +64,8 @@ export interface EditorPart {
   id: string;             // 客户端临时ID
   partType: PartType;
   templateId: string;     // 系统部件模板ID
-  textureUrl?: string;
+  textureUrl?: string;    // 系统模板纹理路径
+  customTextureUrl?: string; // 用户上传的自定义纹理（覆盖默认纹理）
   boneAnchor: BoneName;
   offsetX: number; offsetY: number;
   scaleX: number; scaleY: number;
