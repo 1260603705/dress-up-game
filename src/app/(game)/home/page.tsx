@@ -1,68 +1,111 @@
-// src/app/(game)/home/page.tsx — 首页（角色展示）
+// src/app/(game)/home/page.tsx — 首页（左预览 + 右：档案/相册/仓库/保存）
 'use client';
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useState, useCallback } from 'react';
+import CharacterPreview from '@/components/home/CharacterPreview';
+import ProfileCard from '@/components/home/ProfileCard';
+import MemoryAlbum from '@/components/home/MemoryAlbum';
+import WardrobeGrid from '@/components/wardrobe/WardrobeGrid';
+import { useCharacterStore } from '@/stores/characterStore';
 
-interface Character {
+interface CharItem {
   id: string;
   name: string;
   gender: string;
-  createdAt: string;
 }
 
 export default function HomePage() {
-  const [characters, setCharacters] = useState<Character[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [characters, setCharacters] = useState<CharItem[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [albumKey, setAlbumKey] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const selectedChar = characters.find((c) => c.id === selectedId) ?? null;
+  const { setParams, setWearing, setCharacterId, wearing } = useCharacterStore();
 
+  // 加载角色列表
   useEffect(() => {
     fetch('/api/avatar')
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) setCharacters(data);
+        if (Array.isArray(data) && data.length > 0) {
+          setCharacters(data);
+          setSelectedId(data[0].id);
+        }
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch(() => {});
   }, []);
 
+  const handleSelect = useCallback((id: string) => {
+    setSelectedId(id);
+  }, []);
+
+  // 选中角色时同步 store
+  useEffect(() => {
+    if (!selectedId) return;
+    setCharacterId(selectedId);
+    fetch(`/api/avatar/${selectedId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.customParams) setParams(data.customParams);
+        if (data.wearing) setWearing(data.wearing);
+      })
+      .catch(() => {});
+  }, [selectedId, setParams, setWearing, setCharacterId]);
+
+  // 保存穿搭
+  const handleSaveOutfit = async () => {
+    if (!selectedId) { alert('请先创建角色'); return; }
+    if (wearing.length === 0) { alert('请先从仓库穿戴衣服'); return; }
+    const name = prompt('给这套搭配起个名字：');
+    if (!name?.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/outfits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          characterId: selectedId,
+          name: name.trim(),
+          outfitData: wearing,
+        }),
+      });
+      if (res.ok) {
+        setAlbumKey((k) => k + 1);
+      } else {
+        const data = await res.json();
+        alert(data.error || '保存失败');
+      }
+    } catch {
+      alert('网络错误');
+    }
+    setSaving(false);
+  };
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold">我的角色</h2>
-        <Link href="/character/create" className="px-4 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 transition">
-          创建角色
-        </Link>
+    <div className="flex gap-6 h-full max-w-6xl mx-auto">
+      {/* 左栏：角色预览 */}
+      <div className="flex-1 min-w-0 flex flex-col gap-4">
+        <CharacterPreview
+          characters={characters}
+          selectedId={selectedId}
+          onSelect={handleSelect}
+        />
       </div>
 
-      {loading ? (
-        <p className="text-gray-400 text-center py-12">加载中...</p>
-      ) : characters.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-400 text-lg mb-4">还没有角色</p>
-          <Link href="/character/create" className="text-purple-600 hover:underline text-sm">
-            创建你的第一个角色
-          </Link>
+      {/* 右栏：档案 + 记忆相册 + 仓库 + 保存 */}
+      <div className="w-[360px] flex-shrink-0 overflow-y-auto flex flex-col gap-4 max-h-[calc(100vh-56px-3rem)] pb-4">
+        <ProfileCard character={selectedChar} />
+
+        {/* 记忆相册 */}
+        <div className="bg-game-surface rounded-2xl p-5 shadow-md border-2 border-game-border">
+          <MemoryAlbum key={albumKey} characterId={selectedId} />
         </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {characters.map((char) => (
-            <Link
-              key={char.id}
-              href={`/character/create?id=${char.id}`}
-              className="bg-white border rounded-lg p-4 hover:shadow-md transition"
-            >
-              <div className="w-full aspect-square bg-gradient-to-br from-purple-100 to-pink-100 rounded mb-3 flex items-center justify-center">
-                <span className="text-gray-500 text-3xl font-bold">
-                  {char.gender === 'female' ? '♀' : '♂'}
-                </span>
-              </div>
-              <p className="text-sm font-medium text-center truncate">{char.name}</p>
-              <p className="text-xs text-gray-400 text-center mt-1">
-                {new Date(char.createdAt).toLocaleDateString('zh-CN')}
-              </p>
-            </Link>
-          ))}
+
+        {/* 我的仓库 */}
+        <div className="bg-game-surface rounded-2xl p-5 shadow-md border-2 border-game-border">
+          <h3 className="text-base font-bold mb-3 text-game-text-secondary">我的仓库</h3>
+          <WardrobeGrid characterId={selectedId} onSaveOutfit={handleSaveOutfit} />
         </div>
-      )}
+      </div>
     </div>
   );
 }
