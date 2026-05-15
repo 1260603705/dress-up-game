@@ -45,8 +45,8 @@
 按钮行为：
 | 按钮 | 行为 |
 |------|------|
-| 撤回 | 撤销最近一次穿戴操作（removeWearing 最后加的） |
-| 脱当前 | 脱掉当前选中的衣服 |
+| 撤回 | 撤销最近一次穿戴操作（移除 wearing 数组最后一项） |
+| 脱当前 | 见下方"脱当前"详细逻辑 |
 | 脱全部 | 清空角色所有穿戴，只剩 body base |
 | 保存 | 保存当前穿搭方案（原"保存当前穿搭"） |
 
@@ -70,15 +70,23 @@
 
 ### 点击衣服 → 直接穿戴（去掉弹窗）
 
-点击 `WardrobeCard` 直接调用 `addWearing`，不再弹出 `WardrobeDetail` 的 Modal 确认框。同 item_id 再次点击会替换颜色覆盖（store 已有此逻辑）。
+点击 `WardrobeCard` 直接调用 `addWearing`，不再弹出 `WardrobeDetail` 的 Modal 确认框。
 
-点击后该衣服显示选中高亮（如边框加粗或变色），记录为 `lastSelectedItemId`，作为"脱当前"的目标。
+**同类别互斥：** 角色每个类别（上衣、下装、连衣裙等）只能穿一件。穿戴新衣服时，同类别旧衣服自动被替换。
 
-`WardrobeDetail` 组件可以移除或保留作为其他入口使用。
+**选中高亮：** 点击穿戴后，该卡片边框变亮（如 `border-game-accent` 或 ring），记录为 `selectedItemId`。同一分类下只有一件高亮。
+
+`WardrobeDetail` 组件可以移除。
 
 ### 脱当前
 
-"脱当前"按钮读取 `lastSelectedItemId`（最近一次点击穿上的衣服 ID），对该 ID 执行 `removeWearing`。如果没有选中的衣服，按钮 disabled（灰色不可点）。
+"脱当前"分三种情况（优先级从高到低）：
+
+1. **有选中的衣服（selectedItemId 存在）** → 脱掉这件选中的衣服（`removeWearing(selectedItemId)`），清除高亮
+2. **没有选中衣服，但角色在当前分类下穿了衣服** → 脱掉当前分类下穿的那件（如当前在"上衣"tab，角色穿着上衣，则脱掉上衣）
+3. **当前分类下也没有穿衣服** → 无反应
+
+"脱当前"只影响当前分类下的衣物，不会跨类别脱衣。
 
 ### 搜索功能
 
@@ -89,9 +97,11 @@
 
 ### 撤回功能
 
-在 `characterStore` 中新增两个方法：
-- `undoLastWear()` — 移除 `wearing` 数组最后一项（撤销最近穿戴）
-- `clearWearing()` — 将 `wearing` 设为 `[]`（脱全部）
+在 `characterStore` 中新增/修改：
+
+- **`addWearing`** — 改为按 category 替换：穿戴新 item 时，自动移除同 category（top/bottom/dress 等）的旧 item，保证每类别最多一件
+- **`undoLastWear()`** — 移除 `wearing` 数组最后一项（撤销最近穿戴），同时清除 `selectedItemId`
+- **`clearWearing()`** — 将 `wearing` 设为 `[]`（脱全部），清除 `selectedItemId`
 
 ## 影响范围
 
@@ -105,7 +115,7 @@
 | `src/components/wardrobe/WardrobeCard.tsx` | 点击直接调用 addWearing（去掉 Modal 触发） |
 | `src/components/wardrobe/WardrobeGrid.tsx` | 新增搜索栏；外框包裹网格；4列；新分页样式 |
 | `src/components/shared/Pagination.tsx` | 改为 `<` `当前/总页` `>` 圆形按钮样式 |
-| `src/stores/characterStore.ts` | 新增 `undoLastWear` 方法；新增 `clearWearing` 方法 |
+| `src/stores/characterStore.ts` | `addWearing` 改为同类别替换；新增 `undoLastWear`、`clearWearing` 方法 |
 
 ### 可移除的文件
 
