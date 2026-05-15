@@ -13,6 +13,9 @@ interface WardrobeStore {
   selectedCategory: GarmentCategory | 'all';
   page: number; totalPages: number;
   selectedItem: WardrobeItem | null;
+  searchQuery: string;
+  searchScopeAll: boolean;
+  selectedItemId: string | null;
 
   setItems: (items: WardrobeItem[]) => void;
   setCategory: (cat: GarmentCategory | 'all') => void;  // 切换分类时重置到第1页
@@ -20,14 +23,21 @@ interface WardrobeStore {
   setTotalPages: (total: number) => void;
   setSelectedItem: (item: WardrobeItem | null) => void;
   removeItem: (id: string) => void;
+  setSearchQuery: (q: string) => void;
+  toggleSearchScope: () => void;
+  setSelectedItemId: (id: string | null) => void;
 }
 
 export const useWardrobeStore = create<WardrobeStore>((set) => ({
   items: [], selectedCategory: 'all', page: 1, totalPages: 1, selectedItem: null,
+  searchQuery: '', searchScopeAll: true, selectedItemId: null,
   setItems: (items) => set({ items }),
   setCategory: (cat) => set({ selectedCategory: cat, page: 1 }),  // 切分类 → 重置页
   setPage: (page) => set({ page }),
   setTotalPages: (total) => set({ totalPages: total }),
   setSelectedItem: (item) => set({ selectedItem: item }),
   removeItem: (id) => set((s) => ({ items: s.items.filter(i => i.id !== id) })),
+  setSearchQuery: (q) => set({ searchQuery: q, page: 1 }),
+  toggleSearchScope: () => set((s) => ({ searchScopeAll: !s.searchScopeAll, page: 1 })),
+  setSelectedItemId: (id) => set({ selectedItemId: id }),
 }));
