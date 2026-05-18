@@ -43,9 +43,25 @@ export default function HomePage() {
     setCharacterId(selectedId);
     fetch(`/api/avatar/${selectedId}`)
       .then((r) => r.json())
-      .then((data) => {
+      .then(async (data) => {
         if (data.customParams) setParams(data.customParams);
-        if (data.wearing) setWearing(data.wearing);
+        if (data.wearing) {
+          // 补全旧数据缺失的 category 字段
+          const enriched = await Promise.all(
+            data.wearing.map(async (w: any) => {
+              if (w.category) return w;
+              try {
+                const r = await fetch(`/api/wardrobe/${w.item_id}`);
+                if (!r.ok) return w;
+                const item = await r.json();
+                return { ...w, category: item.category };
+              } catch {
+                return w;
+              }
+            })
+          );
+          setWearing(enriched);
+        }
       })
       .catch(() => {});
   }, [selectedId, setParams, setWearing, setCharacterId]);

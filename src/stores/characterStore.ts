@@ -53,8 +53,10 @@ export const useCharacterStore = create<CharacterStore>((set) => ({
   setWearing: (wearing) => set({ wearing }),
   addWearing: (entry, category) =>
     set((s) => {
-      // 同 category 先移除再添加，实现同类别互斥替换
-      const filtered = s.wearing.filter((w) => w.category !== category);
+      // 同 category 或同 item_id 都移除（兼容旧数据无 category 字段）
+      const filtered = s.wearing.filter((w) =>
+        w.item_id !== entry.item_id && w.category !== category
+      );
       return { wearing: [...filtered, { ...entry, category: category as GarmentCategory }] };
     }),
   removeWearing: (itemId) =>
